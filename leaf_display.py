@@ -6,26 +6,22 @@ from tkinter import *
 import time
 
 def update():
-    update.counter += 1
-
     msg = bus.recv(update.timeout_sec)
     try:
 
         if msg.arbitration_id == 0x5BC:
-            rawGids = (msg.data[2] << 2) + (msg.data[1] >> 6)
+            rawGids = (msg.data[0] << 2) + (msg.data[1] >> 6)
             update.kwh = rawGids * update.kw_factor / 1000.0
 
     except AttributeError:
         pass
 
     l1.config(text = update.kwh)
-    l2.config(text = update.counter)
     win.after(10, update)
 
 update.kw_factor = 74.73
 update.kwh = 0.0
 
-update.counter = 0
 update.timeout_sec = 1.0
 
 bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000)
@@ -57,14 +53,6 @@ l1_label = Label(win, text = 'kWh', justify=LEFT)
 l1_label.place(x = spacing_x * 1, y= spacing_y * 0)
 l1_label.config(font =("Courier", font_size))
 
-l2 = Label(win, text = update.counter, justify=RIGHT)
-l2.place(x = spacing_x * 0, y= spacing_y * 1)
-l2.config(font =("Courier", font_size))
-
-l2_label = Label(win, text = 'counter', justify=LEFT)
-l2_label.place(x = spacing_x * 1, y= spacing_y * 1)
-l2_label.config(font =("Courier", font_size))
-
-win.after(1000, update)
+win.after(10, update)
 win.mainloop()
 bus.shutdown()
