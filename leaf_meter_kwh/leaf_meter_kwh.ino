@@ -1,4 +1,12 @@
-// Nissan Leaf CAR-CAN
+// Nissan Leaf EV-CAN
+
+// Battery current Amp
+// 0.5A resolution
+// 10ms
+// 2 counts = 1 A
+// 2 x 360000 = 720000 = 1 Ah
+// 40 Ah x 2 counts/A x 100 Hz x 60 sec/min 60min/h = 28.8 x 10e6
+// int32_t
 
 #include <ssd1306.h>
 #include <mcp_can.h>
@@ -6,51 +14,43 @@
 
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
-#define KWH_FACTOR 77.5F
-#define TEN_MSEC_PER_HOUR 360000.0F
-#define LINE_SPACING 16
-#define X0 32
-#define Y0 0
-#define Y1 (Y0 + LINE_SPACING)
-#define Y2 (Y1 + LINE_SPACING)
-#define Y3 (Y2 + LINE_SPACING)
+#define COUNTS_PER_DECI_AH 7200
 
-#define frac(x) (int(10*(x - int(x))))
+#define frac(x) (int(100*(x - int(x))))
 
-long unsigned int rx_id;
+long unsigned int rxId;
 unsigned char len = 0;
-unsigned char rx_buf[8];
+unsigned char rxBuf[8];
 
-unsigned long raw_odo;
-float odo_km_start;
-float odo_km;
+int16_t amp = 0;
+bool amp_positive = true;
+int16_t ah = 0;
+int16_t ah_frac = 0;
+int32_t ah_count = 0;
+int16_t ah_deci = 0;
 
-byte raw_battery_pack_temp;    // raw battery pack temperature
-byte raw_battery_soh;          // battery State of Health %
-byte raw_gids;                 // raw Gids from Vehicle CAN bus x5b3
-byte raw_gids2;                // raw Gids from Vehicle CAN bus x5b3
-
-
-uint16_t soc;
-float kwh = 0.0;
-float kwh_start = 0.0;
-float kwh_trip = 0.0;
-char buffer[10];
 char buf_int[4];
 char buf_frac[4];
 
-void oled_update(uint8_t x, uint8_t y, float kwhr)
+void oled_update()
 {
-  sprintf(buffer, "%2d.%01d kWh", int(kwhr), frac(kwhr));
-  ssd1306_printFixed(x, y, buffer, STYLE_BOLD);
-}
+  ah_deci = (int16_t)(ah_count / COUNTS_PER_DECI_AH);
+  if (ah_count < 0)
+  {
+    ssd1306_printFixed2x(0, 16, "-", STYLE_BOLD);
+    ah_deci = -ah_deci;
+  }
+  else
+  {
+    ssd1306_printFixed2x(0, 16, " ", STYLE_BOLD);
+  }
 
-void oled_update_all()
-{
-  oled_update(X0, Y0, kwh);
-  oled_update(X0, Y1, odo_km);
-  oled_update(X0, Y2, kwh_trip);
-  oled_update(X0, Y3, kwh);
+  ah = ah_deci / 100;
+  ah_frac = ah_deci % 100;
+  sprintf(buf_int, "%2d", ah);
+  sprintf(buf_frac, "%02d", ah_frac);
+  ssd1306_printFixed2x(7, 16, buf_int, STYLE_BOLD);
+  ssd1306_printFixed2x(52, 16, buf_frac, STYLE_BOLD);
 }
 
 void setup()
@@ -58,51 +58,40 @@ void setup()
   ssd1306_128x64_i2c_init();
   ssd1306_setFixedFont(ssd1306xled_font8x16);
   ssd1306_clearScreen();    
-
+  ssd1306_printFixed2x(88, 16, "Ah", STYLE_BOLD);
+  ssd1306_printFixed2x(41, 16, ".", STYLE_BOLD);
   CAN0.begin(MCP_STDEXT, CAN_500KBPS, MCP_8MHZ);
   CAN0.init_Mask(0, 0, 0x07ff0000);
-  CAN0.init_Filt(0, 0, 0x05b30000);
-  CAN0.init_Filt(1, 0, 0x05c50000); 
+  CAN0.init_Filt(0, 0, 0x01db0000);
   CAN0.setMode(MCP_NORMAL);
 
   pinMode(CAN0_INT, INPUT);
-  oled_update_all();
+  oled_update();
 }
-
-// CAR-CAN
-// 0x5b3 temp, soh, soc 
-// 0x5c5 odometer
 
 void loop()
 {
   if (!digitalRead(CAN0_INT))
   {
-    CAN0.readMsgBuf(&rx_id, &len, rx_buf);
-    if (rx_id == 0x5b3)
+    CAN0.readMsgBuf(&rxId, &len, rxBuf);
+    if (rxId == 0x1db)
     {
-      raw_battery_pack_temp = (rx_buf[0]);
-      raw_battery_soh = (rx_buf[1]) >> 1;
-
-      soc = constrain((rx_buf[5]), 0, 255); // contrained to fit in one byte
-      kwh = (((float)soc) * KWH_FACTOR) / 1000.0F;
-      if (kwh_start < 0.1)
+      amp = (rxBuf[0] << 3) | (rxBuf[1] >> 5);
+      if (amp & 0x0400)
       {
-        kwh_start = kwh;
+        amp |= 0xf800;
       }
-      kwh_trip = kwh_start - kwh;
-      oled_update_all();
-    }
-    if (rx_id == 0x5c5)
-    {
-      raw_odo = (rx_buf[1] << 16 | rx_buf[2] << 8 | rx_buf[3]);
-      if (odo_km_start > 0.0)
+      amp = -amp;
+ 
+      if ((ah_count < 0) && (amp > 0))
       {
-        odo_km = ((float)raw_odo) - odo_km_start;
-        
-      } else
-      {
-        odo_km_start = (float)raw_odo;
+        ah_count = 0;
       }
+      else
+      {
+        ah_count += (int32_t)amp;
+      }
+      oled_update();
     }
   }
 }
