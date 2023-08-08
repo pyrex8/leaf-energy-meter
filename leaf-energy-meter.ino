@@ -24,55 +24,54 @@ MCP_CAN CAN0(10);
 #define SLEEP_COUNT_OFF 1000
 #define SLEEP_COUNT_ON 4000
 
+#define LINE_SPACING 32
+#define X0 0
+#define Y0 0
+#define Y1 (Y0 + LINE_SPACING)
+
 long unsigned int rxId;
 unsigned char len = 0;
 unsigned char rxBuf[8];
 
 int16_t amp = 0;
-bool amp_positive = true;
 int16_t ah = 0;
 int16_t ah_frac = 0;
 int32_t ah_count = 0;
+int32_t ah_count_start = 0;
+int32_t ah_count_trip = 0;
 int16_t ah_deci = 0;
 
 bool screen_asleep = true;
 uint16_t screen_sleep_counter = 0;
 
-
+char buffer[10];
 char buf_int[4];
 char buf_frac[4];
 
-void oled_format()
-{
-  if (screen_asleep)
-  {
-    screen_asleep = false;
-    ssd1306_printFixed2x(88, 16, "Ah", STYLE_BOLD);
-    ssd1306_printFixed2x(41, 16, ".", STYLE_BOLD);    
-  }
-}
 
-void oled_update()
+void oled_update(uint8_t x, uint8_t y, int32_t ah_cnt)
 {
-
-  oled_format();
-  ah_deci = (int16_t)(ah_count / COUNTS_PER_DECI_AH);
-  if (ah_count < 0)
+  ah_deci = (int16_t)(ah_cnt / COUNTS_PER_DECI_AH); 
+  if (ah_cnt < 0)
   {
-    ssd1306_printFixed2x(0, 16, "-", STYLE_BOLD);
     ah_deci = -ah_deci;
+    ah = ah_deci / 100;
+    ah_frac = ah_deci % 100;
+    sprintf(buffer, "-%2d.%02dAh", ah, ah_frac);
   }
   else
   {
-    ssd1306_printFixed2x(0, 16, " ", STYLE_BOLD);
+    ah = ah_deci / 100;
+    ah_frac = ah_deci % 100;
+    sprintf(buffer, " %2d.%02dAh", ah, ah_frac);
   }
+  ssd1306_printFixed2x(x, y, buffer, STYLE_BOLD);
+}
 
-  ah = ah_deci / 100;
-  ah_frac = ah_deci % 100;
-  sprintf(buf_int, "%2d", ah);
-  sprintf(buf_frac, "%02d", ah_frac);
-  ssd1306_printFixed2x(7, 16, buf_int, STYLE_BOLD);
-  ssd1306_printFixed2x(52, 16, buf_frac, STYLE_BOLD);
+void oled_update_all()
+{
+  oled_update(X0, Y0, ah_count);
+  oled_update(X0, Y1, ah_count_trip);
 }
 
 void setup()
@@ -86,7 +85,7 @@ void setup()
   CAN0.setMode(MCP_NORMAL);
 
   pinMode(CAN0_INT, INPUT);
-  oled_update();
+  oled_update_all();
 }
 
 void loop()
@@ -111,8 +110,17 @@ void loop()
       {
         ah_count += (int32_t)amp;
       }
-      oled_update();
+
       screen_sleep_counter = 0;
+
+      if (screen_asleep && (ah_count >= 0))
+      {
+        screen_asleep = false;
+        ah_count_start = ah_count;
+      }
+      
+      ah_count_trip = ah_count - ah_count_start;
+      oled_update_all();
     }
   }
   else
@@ -125,7 +133,7 @@ void loop()
     }
     if (screen_sleep_counter == SLEEP_COUNT_ON)
     {
-      oled_update();
+      oled_update_all();
       screen_sleep_counter = 0;
     }
     delay(DELAY_1MS);
