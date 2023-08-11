@@ -103,7 +103,7 @@ void loop()
       }
 
       ah_deci = (int16_t)(ah_count_trip / COUNTS_PER_DECI_AH); 
-      if (ah_count < 0)
+      if (ah_count_trip < 0)
       {
         ah_deci = -ah_deci;
         ah = ah_deci / 100;
