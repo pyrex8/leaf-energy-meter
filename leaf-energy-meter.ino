@@ -32,11 +32,13 @@ int16_t ah = 0;
 int16_t ah_deci = 0;
 int16_t ah_frac = 0;
 int32_t ah_count = 0;
+char ah_sign = ' ';
 
 int16_t ah_trip = 0;
 int16_t ah_deci_trip = 0;
 int16_t ah_frac_trip = 0;
 int32_t ah_count_trip = 0;
+char ah_sign_trip = ' ';
 
 uint16_t soc;
 float kwh = 0.0f;
@@ -109,11 +111,13 @@ void loop()
         ah_deci = -ah_deci;
         ah = ah_deci / 100;
         ah_frac = ah_deci % 100;
+        ah_sign = '-';
       }
       else
       {
         ah = ah_deci / 100;
         ah_frac = ah_deci % 100;
+        ah_sign = ' ';
       }
 
       ah_deci_trip = (int16_t)(ah_count_trip / COUNTS_PER_DECI_AH); 
@@ -122,11 +126,13 @@ void loop()
         ah_deci_trip = -ah_deci_trip;
         ah_trip = ah_deci_trip / 100;
         ah_frac_trip = ah_deci_trip % 100;
+        ah_sign_trip = '-';
       }
       else
       {
         ah_trip = ah_deci_trip / 100;
         ah_frac_trip = ah_deci_trip % 100;
+        ah_sign_trip = ' ';
       }
     }
   }
@@ -145,12 +151,14 @@ void loop()
   TEST_POINT_HIGH;
   if ((i == 0) && (j == 0))
   {
-    sprintf(&buffer[0],  "-%2d.%02d Ah ", ah_trip, ah_frac_trip);
-    sprintf(&buffer[10], "-%2d.%02d", ah, ah_frac);
+    sprintf(&buffer[0],  " %2d.%02d Ah ", ah_trip, ah_frac_trip);
+    sprintf(&buffer[10], " %2d.%02d", ah, ah_frac);
     sprintf(&buffer[16], " %2d.%01d  kWh        ", int(kwh_trip), frac(kwh_trip));
     sprintf(&buffer[26], " %2d.%01d ", int(kwh), frac(kwh));
     sprintf(&buffer[32], " %2d.%01d  miles       ", int(miles), frac(miles));
     sprintf(&buffer[48], " %2d.%01d  m/kWh       ", int(mpkwh), frac(mpkwh));
+    buffer[0] = ah_sign_trip;
+    buffer[10] = ah_sign;
   }
 
   i++;
