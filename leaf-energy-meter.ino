@@ -146,7 +146,7 @@ void loop()
   if (rxId == 0x5bc)
   {
     soc = (rxBuf[0] << 2) | (rxBuf[1] >> 6);
-    kwh_centi = (soc * KWH_FACTOR) / 100;
+    kwh_centi = (int16_t)(((int32_t)soc * KWH_FACTOR) / 100);
 
     if (screen_asleep_kwh)
     {
