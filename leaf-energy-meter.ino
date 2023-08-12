@@ -6,7 +6,7 @@
 
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
-#define COUNTS_PER_CENTI_KWH 14400000 // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
+#define COUNTS_PER_CENTI_KWH 14400000  // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
 
 #define LINE_SPACING 16
 #define X0 0
@@ -15,13 +15,13 @@ MCP_CAN CAN0(10);
 
 #define SLEEP_COUNT_MAX 4000
 
-#define TEST_POINT        3
-#define TEST_POINT_INIT   pinMode(TEST_POINT, OUTPUT)
-#define TEST_POINT_HIGH   digitalWrite(TEST_POINT, HIGH)
-#define TEST_POINT_LOW    digitalWrite(TEST_POINT, LOW)
+#define TEST_POINT 3
+#define TEST_POINT_INIT pinMode(TEST_POINT, OUTPUT)
+#define TEST_POINT_HIGH digitalWrite(TEST_POINT, HIGH)
+#define TEST_POINT_LOW digitalWrite(TEST_POINT, LOW)
 
-#define KWH_FACTOR 77.5F
-#define frac(x) (int(10*(x - int(x))))
+#define KWH_FACTOR 775
+#define frac(x) (int(10 * (x - int(x))))
 
 long unsigned int rxId;
 unsigned char len = 0;
@@ -43,13 +43,21 @@ int32_t kwhr_count_trip = 0;
 char kwhr_sign_trip = ' ';
 
 uint16_t soc;
-float kwh = 0.0f;
-float kwh_start = 0.0f;
-float kwh_trip = 0.0f;
+
+int16_t kwh = 0;
+int16_t kwh_centi = 0;
+int16_t kwh_frac = 0;
+char kwh_sign = ' ';
+
+int16_t kwh_trip = 0;
+int16_t kwh_centi_trip = 0;
+int16_t kwh_frac_trip = 0;
+char kwh_sign_trip = ' ';
+
+int16_t kwh_centi_start = 0;
+
 float miles = 0.0;
 float mpkwh = 0.0;
-char buf_int[4];
-char buf_frac[4];
 
 bool screen_asleep_kwhr = true;
 bool screen_asleep_kwh = true;
@@ -65,7 +73,7 @@ void setup()
   TEST_POINT_INIT;
   ssd1306_128x64_i2c_init();
   ssd1306_setFixedFont(ssd1306xled_font8x16);
-  ssd1306_clearScreen();    
+  ssd1306_clearScreen();
   CAN0.begin(MCP_STDEXT, CAN_500KBPS, MCP_8MHZ);
   CAN0.init_Mask(0, 0, 0x07ff0000);
   CAN0.init_Filt(0, 0, 0x01db0000);
@@ -81,21 +89,19 @@ void loop()
     CAN0.readMsgBuf(&rxId, &len, rxBuf);
     if (rxId == 0x1db)
     {
-      amp = (rxBuf[0] << 3) | (rxBuf[1] >> 5); // 0.5A/count 11 bits
+      amp = (rxBuf[0] << 3) | (rxBuf[1] >> 5);  // 0.5A/count 11 bits
       if (amp & 0x0400)
       {
         amp |= 0xf800;
       }
       amp = -amp;
- 
-      volt = (rxBuf[2] << 2) | (rxBuf[3] >> 6); // 0.5V/count 10 bits
+
+      volt = (rxBuf[2] << 2) | (rxBuf[3] >> 6);  // 0.5V/count 10 bits
 
       if ((kwhr_count < 0) && (amp > 0))
       {
         kwhr_count = 0;
-      }
-      else
-      {
+      } else {
         kwhr_count += (int32_t)volt * (int32_t)amp;
       }
 
@@ -106,34 +112,31 @@ void loop()
         screen_asleep_kwhr = false;
         kwhr_count_trip = 0;
       }
-      
-      kwhr_count_trip += (int32_t)amp;
 
-      kwhr_centi = (int16_t)(kwhr_count / COUNTS_PER_CENTI_KWH); 
+      kwhr_count_trip += (int32_t)volt * (int32_t)amp;
+
+      kwhr_centi = (int16_t)(kwhr_count / COUNTS_PER_CENTI_KWH);
       if (kwhr_count < 0)
       {
         kwhr_centi = -kwhr_centi;
         kwhr = kwhr_centi / 100;
         kwhr_frac = kwhr_centi % 100;
         kwhr_sign = '-';
-      }
-      else
+      } else
       {
         kwhr = kwhr_centi / 100;
         kwhr_frac = kwhr_centi % 100;
         kwhr_sign = ' ';
       }
 
-      kwhr_centi_trip = (int16_t)(kwhr_count_trip / COUNTS_PER_CENTI_KWH); 
+      kwhr_centi_trip = (int16_t)(kwhr_count_trip / COUNTS_PER_CENTI_KWH);
       if (kwhr_count_trip < 0)
       {
         kwhr_centi_trip = -kwhr_centi_trip;
         kwhr_trip = kwhr_centi_trip / 100;
         kwhr_frac_trip = kwhr_centi_trip % 100;
         kwhr_sign_trip = '-';
-      }
-      else
-      {
+      } else {
         kwhr_trip = kwhr_centi_trip / 100;
         kwhr_frac_trip = kwhr_centi_trip % 100;
         kwhr_sign_trip = ' ';
@@ -143,26 +146,56 @@ void loop()
   if (rxId == 0x5bc)
   {
     soc = (rxBuf[0] << 2) | (rxBuf[1] >> 6);
-    kwh = (((float)soc) * KWH_FACTOR) / 1000.0F;
+    kwh_centi = (soc * KWH_FACTOR) / 100;
+
     if (screen_asleep_kwh)
     {
-      kwh_start = kwh;
+      kwh_centi_start = kwh_centi;
       screen_asleep_kwh = false;
     }
-    kwh_trip = kwh_start - kwh;
+    kwh_centi_trip = kwh_centi_start - kwh_centi;
+
+    if (kwh_centi < 0)
+    {
+      kwh_centi = -kwh_centi;
+      kwh = kwh_centi / 100;
+      kwh_frac = kwh_centi % 100;
+      kwh_sign = '-';
+    } else
+    {
+      kwh = kwh_centi / 100;
+      kwh_frac = kwh_centi % 100;
+      kwh_sign = ' ';
+    }
+
+    if (kwh_centi_trip < 0)
+    {
+      kwh_centi_trip = -kwh_centi_trip;
+      kwh_trip = kwh_centi_trip / 100;
+      kwh_frac_trip = kwh_centi_trip % 100;
+      kwh_sign_trip = '-';
+    } else
+    {
+      kwh_trip = kwh_centi_trip / 100;
+      kwh_frac_trip = kwh_centi_trip % 100;
+      kwh_sign_trip = ' ';
+    }
   }
 
   TEST_POINT_HIGH;
   if ((i == 0) && (j == 0))
   {
-    sprintf(&buffer[0],  " %2d.%02d kWh", kwhr_trip, kwhr_frac_trip);
+    sprintf(&buffer[0], " %2d.%02d kWh", kwhr_trip, kwhr_frac_trip);
     sprintf(&buffer[10], " %2d.%02d", kwhr, kwhr_frac);
-    sprintf(&buffer[16], " %2d.%01d  kWh        ", int(kwh_trip), frac(kwh_trip));
-    sprintf(&buffer[26], " %2d.%01d ", int(kwh), frac(kwh));
+    sprintf(&buffer[16], " %2d.%02d kWh", kwh_trip, kwh_frac_trip);
+    sprintf(&buffer[26], " %2d.%02d", kwh, kwh_frac);
+
     sprintf(&buffer[32], " %2d.%01d  miles       ", int(miles), frac(miles));
     sprintf(&buffer[48], " %2d.%01d  m/kWh       ", int(mpkwh), frac(mpkwh));
     buffer[0] = kwhr_sign_trip;
     buffer[10] = kwhr_sign;
+    buffer[16] = kwh_sign_trip;
+    buffer[26] = kwh_sign;
   }
 
   i++;
@@ -175,15 +208,15 @@ void loop()
       j = 0;
     }
   }
-  buff_char[0] = buffer[i + j*16];
-  ssd1306_printFixed(i*8, j*Y1, buff_char, STYLE_BOLD);
+  buff_char[0] = buffer[i + j * 16];
+  ssd1306_printFixed(i * 8, j * Y1, buff_char, STYLE_BOLD);
   TEST_POINT_LOW;
 
   screen_sleep_counter++;
   if (screen_sleep_counter == SLEEP_COUNT_MAX)
   {
     screen_asleep_kwhr = true;
-    screen_asleep_kwh = true; 
+    screen_asleep_kwh = true;
     screen_sleep_counter = 0;
   }
 }
