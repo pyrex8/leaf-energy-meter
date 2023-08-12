@@ -7,6 +7,8 @@
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
 #define COUNTS_PER_CENTI_KWH 14400000  // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
+#define SPEED_PER_MPH 316 // from driving test data
+#define DISTANCE_PER_MILE 5688000 // 316 * 60 * 60 * 50 for 20ms sample (removed one zero for CENTI)
 
 #define LINE_SPACING 16
 #define X0 0
@@ -21,7 +23,6 @@ MCP_CAN CAN0(10);
 #define TEST_POINT_LOW digitalWrite(TEST_POINT, LOW)
 
 #define KWH_FACTOR 775
-#define frac(x) (int(10 * (x - int(x))))
 
 long unsigned int rxId;
 unsigned char len = 0;
@@ -42,7 +43,8 @@ int16_t kwhr_frac_trip = 0;
 int32_t kwhr_count_trip = 0;
 char kwhr_sign_trip = ' ';
 
-uint16_t soc;
+uint16_t gids = 0;
+uint16_t soc = 0;
 
 int16_t kwh = 0;
 int16_t kwh_centi = 0;
@@ -56,8 +58,11 @@ char kwh_sign_trip = ' ';
 
 int16_t kwh_centi_start = 0;
 
-float miles = 0.0;
-float mpkwh = 0.0;
+uint16_t speed = 0;
+uint32_t distance = 0;
+uint16_t mph = 0;
+uint16_t miles = 0;
+uint16_t mpkwh = 0;
 
 bool screen_asleep_kwhr = true;
 bool screen_asleep_kwh = true;
@@ -78,6 +83,8 @@ void setup()
   CAN0.init_Mask(0, 0, 0x07ff0000);
   CAN0.init_Filt(0, 0, 0x01db0000);
   CAN0.init_Filt(1, 0, 0x05bc0000);
+  CAN0.init_Filt(2, 0, 0x055b0000);
+  CAN0.init_Filt(3, 0, 0x02840000);
   CAN0.setMode(MCP_NORMAL);
   pinMode(CAN0_INT, INPUT);
 }
@@ -145,8 +152,8 @@ void loop()
   }
   if (rxId == 0x5bc)
   {
-    soc = (rxBuf[0] << 2) | (rxBuf[1] >> 6);
-    kwh_centi = (int16_t)(((int32_t)soc * KWH_FACTOR) / 100);
+    gids = (rxBuf[0] << 2) | (rxBuf[1] >> 6);
+    kwh_centi = (int16_t)(((int32_t)gids * KWH_FACTOR) / 100);
 
     if (screen_asleep_kwh)
     {
@@ -182,6 +189,20 @@ void loop()
     }
   }
 
+  if (rxId == 0x55b)
+  {
+    soc = (rxBuf[0] << 2) | (rxBuf[1] >> 6);
+  }
+
+  if (rxId == 0x284)
+  {
+    speed = (rxBuf[0] << 8) | (rxBuf[1]);
+    distance += speed; 
+    mph = speed / SPEED_PER_MPH;
+    miles = distance / DISTANCE_PER_MILE;
+  }
+
+
   TEST_POINT_HIGH;
   if ((i == 0) && (j == 0))
   {
@@ -190,8 +211,8 @@ void loop()
     sprintf(&buffer[16], " %2d.%02d kWh", kwh_trip, kwh_frac_trip);
     sprintf(&buffer[26], " %2d.%02d", kwh, kwh_frac);
 
-    sprintf(&buffer[32], " %2d.%01d  miles       ", int(miles), frac(miles));
-    sprintf(&buffer[48], " %2d.%01d  m/kWh       ", int(mpkwh), frac(mpkwh));
+    sprintf(&buffer[32], "%3d m %2d mph ", miles, mph);
+    sprintf(&buffer[48], "  %4d soc  %4d", soc, gids);
     buffer[0] = kwhr_sign_trip;
     buffer[10] = kwhr_sign;
     buffer[16] = kwh_sign_trip;
