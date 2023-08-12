@@ -6,7 +6,7 @@
 
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
-#define COUNTS_PER_DECI_AH 7200
+#define COUNTS_PER_CENTI_KWH 14400000 // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
 
 #define LINE_SPACING 16
 #define X0 0
@@ -27,18 +27,20 @@ long unsigned int rxId;
 unsigned char len = 0;
 unsigned char rxBuf[8];
 
+int16_t volt = 0;
 int16_t amp = 0;
-int16_t ah = 0;
-int16_t ah_deci = 0;
-int16_t ah_frac = 0;
-int32_t ah_count = 0;
-char ah_sign = ' ';
 
-int16_t ah_trip = 0;
-int16_t ah_deci_trip = 0;
-int16_t ah_frac_trip = 0;
-int32_t ah_count_trip = 0;
-char ah_sign_trip = ' ';
+int16_t kwhr = 0;
+int16_t kwhr_centi = 0;
+int16_t kwhr_frac = 0;
+int32_t kwhr_count = 0;
+char kwhr_sign = ' ';
+
+int16_t kwhr_trip = 0;
+int16_t kwhr_centi_trip = 0;
+int16_t kwhr_frac_trip = 0;
+int32_t kwhr_count_trip = 0;
+char kwhr_sign_trip = ' ';
 
 uint16_t soc;
 float kwh = 0.0f;
@@ -49,7 +51,7 @@ float mpkwh = 0.0;
 char buf_int[4];
 char buf_frac[4];
 
-bool screen_asleep_ah = true;
+bool screen_asleep_kwhr = true;
 bool screen_asleep_kwh = true;
 uint16_t screen_sleep_counter = 0;
 
@@ -79,60 +81,62 @@ void loop()
     CAN0.readMsgBuf(&rxId, &len, rxBuf);
     if (rxId == 0x1db)
     {
-      amp = (rxBuf[0] << 3) | (rxBuf[1] >> 5);
+      amp = (rxBuf[0] << 3) | (rxBuf[1] >> 5); // 0.5A/count 11 bits
       if (amp & 0x0400)
       {
         amp |= 0xf800;
       }
       amp = -amp;
  
-      if ((ah_count < 0) && (amp > 0))
+      volt = (rxBuf[2] << 2) | (rxBuf[3] >> 6); // 0.5V/count 10 bits
+
+      if ((kwhr_count < 0) && (amp > 0))
       {
-        ah_count = 0;
+        kwhr_count = 0;
       }
       else
       {
-        ah_count += (int32_t)amp;
+        kwhr_count += (int32_t)volt * (int32_t)amp;
       }
 
       screen_sleep_counter = 0;
 
-      if (screen_asleep_ah && (ah_count >= 0))
+      if (screen_asleep_kwhr && (kwhr_count >= 0))
       {
-        screen_asleep_ah = false;
-        ah_count_trip = 0;
+        screen_asleep_kwhr = false;
+        kwhr_count_trip = 0;
       }
       
-      ah_count_trip += (int32_t)amp;
+      kwhr_count_trip += (int32_t)amp;
 
-      ah_deci = (int16_t)(ah_count / COUNTS_PER_DECI_AH); 
-      if (ah_count < 0)
+      kwhr_centi = (int16_t)(kwhr_count / COUNTS_PER_CENTI_KWH); 
+      if (kwhr_count < 0)
       {
-        ah_deci = -ah_deci;
-        ah = ah_deci / 100;
-        ah_frac = ah_deci % 100;
-        ah_sign = '-';
+        kwhr_centi = -kwhr_centi;
+        kwhr = kwhr_centi / 100;
+        kwhr_frac = kwhr_centi % 100;
+        kwhr_sign = '-';
       }
       else
       {
-        ah = ah_deci / 100;
-        ah_frac = ah_deci % 100;
-        ah_sign = ' ';
+        kwhr = kwhr_centi / 100;
+        kwhr_frac = kwhr_centi % 100;
+        kwhr_sign = ' ';
       }
 
-      ah_deci_trip = (int16_t)(ah_count_trip / COUNTS_PER_DECI_AH); 
-      if (ah_count_trip < 0)
+      kwhr_centi_trip = (int16_t)(kwhr_count_trip / COUNTS_PER_CENTI_KWH); 
+      if (kwhr_count_trip < 0)
       {
-        ah_deci_trip = -ah_deci_trip;
-        ah_trip = ah_deci_trip / 100;
-        ah_frac_trip = ah_deci_trip % 100;
-        ah_sign_trip = '-';
+        kwhr_centi_trip = -kwhr_centi_trip;
+        kwhr_trip = kwhr_centi_trip / 100;
+        kwhr_frac_trip = kwhr_centi_trip % 100;
+        kwhr_sign_trip = '-';
       }
       else
       {
-        ah_trip = ah_deci_trip / 100;
-        ah_frac_trip = ah_deci_trip % 100;
-        ah_sign_trip = ' ';
+        kwhr_trip = kwhr_centi_trip / 100;
+        kwhr_frac_trip = kwhr_centi_trip % 100;
+        kwhr_sign_trip = ' ';
       }
     }
   }
@@ -151,14 +155,14 @@ void loop()
   TEST_POINT_HIGH;
   if ((i == 0) && (j == 0))
   {
-    sprintf(&buffer[0],  " %2d.%02d Ah ", ah_trip, ah_frac_trip);
-    sprintf(&buffer[10], " %2d.%02d", ah, ah_frac);
+    sprintf(&buffer[0],  " %2d.%02d kWh", kwhr_trip, kwhr_frac_trip);
+    sprintf(&buffer[10], " %2d.%02d", kwhr, kwhr_frac);
     sprintf(&buffer[16], " %2d.%01d  kWh        ", int(kwh_trip), frac(kwh_trip));
     sprintf(&buffer[26], " %2d.%01d ", int(kwh), frac(kwh));
     sprintf(&buffer[32], " %2d.%01d  miles       ", int(miles), frac(miles));
     sprintf(&buffer[48], " %2d.%01d  m/kWh       ", int(mpkwh), frac(mpkwh));
-    buffer[0] = ah_sign_trip;
-    buffer[10] = ah_sign;
+    buffer[0] = kwhr_sign_trip;
+    buffer[10] = kwhr_sign;
   }
 
   i++;
@@ -178,7 +182,7 @@ void loop()
   screen_sleep_counter++;
   if (screen_sleep_counter == SLEEP_COUNT_MAX)
   {
-    screen_asleep_ah = true;
+    screen_asleep_kwhr = true;
     screen_asleep_kwh = true; 
     screen_sleep_counter = 0;
   }
