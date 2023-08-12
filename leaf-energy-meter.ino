@@ -8,7 +8,7 @@
 MCP_CAN CAN0(10);
 #define COUNTS_PER_CENTI_KWH 14400000  // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
 #define SPEED_PER_MPH 316 // from driving test data
-#define DISTANCE_PER_MILE 5688000 // 316 * 60 * 60 * 50 for 20ms sample (removed one zero for CENTI)
+#define DISTANCE_PER_MILE (SPEED_PER_MPH * 6 * 6 * 50) // 316 * 60 * 60 * 50 for 20ms sample (removed two zero for CENTI)
 
 #define LINE_SPACING 16
 #define X0 0
@@ -44,7 +44,9 @@ int32_t kwhr_count_trip = 0;
 char kwhr_sign_trip = ' ';
 
 uint16_t gids = 0;
+uint16_t soc_deci = 0;
 uint16_t soc = 0;
+uint16_t soc_frac = 0;
 
 int16_t kwh = 0;
 int16_t kwh_centi = 0;
@@ -61,7 +63,10 @@ int16_t kwh_centi_start = 0;
 uint16_t speed = 0;
 uint32_t distance = 0;
 uint16_t mph = 0;
+
+uint16_t miles_centi = 0;
 uint16_t miles = 0;
+uint16_t miles_frac = 0;
 uint16_t mpkwh = 0;
 
 bool screen_asleep_kwhr = true;
@@ -191,7 +196,9 @@ void loop()
 
   if (rxId == 0x55b)
   {
-    soc = (rxBuf[0] << 2) | (rxBuf[1] >> 6);
+    soc_deci = (rxBuf[0] << 2) | (rxBuf[1] >> 6);
+    soc = soc_deci / 10;
+    soc_frac = soc % 10;
   }
 
   if (rxId == 0x284)
@@ -199,7 +206,9 @@ void loop()
     speed = (rxBuf[0] << 8) | (rxBuf[1]);
     distance += speed; 
     mph = speed / SPEED_PER_MPH;
-    miles = distance / DISTANCE_PER_MILE;
+    miles_centi = distance / DISTANCE_PER_MILE;
+    miles = miles_centi / 100;
+    miles_frac = miles_centi % 100;
   }
 
 
@@ -211,8 +220,8 @@ void loop()
     sprintf(&buffer[16], " %2d.%02d kWh", kwh_trip, kwh_frac_trip);
     sprintf(&buffer[26], " %2d.%02d", kwh, kwh_frac);
 
-    sprintf(&buffer[32], "%3d m %2d mph ", miles, mph);
-    sprintf(&buffer[48], "  %4d soc  %4d", soc, gids);
+    sprintf(&buffer[32], " %2d.%02d mi %2d mph ", miles, miles_frac, mph);
+    sprintf(&buffer[48], " %2d.%01d  soc  %4d", soc, soc_frac, gids);
     buffer[0] = kwhr_sign_trip;
     buffer[10] = kwhr_sign;
     buffer[16] = kwh_sign_trip;
