@@ -67,7 +67,11 @@ uint16_t mph = 0;
 uint16_t miles_centi = 0;
 uint16_t miles = 0;
 uint16_t miles_frac = 0;
+
+uint16_t mpkwh_deci = 0;
 uint16_t mpkwh = 0;
+uint16_t mpkwh_frac = 0;
+
 
 bool screen_asleep_kwhr = true;
 bool screen_asleep_kwh = true;
@@ -209,6 +213,17 @@ void loop()
     miles_centi = distance / DISTANCE_PER_MILE;
     miles = miles_centi / 100;
     miles_frac = miles_centi % 100;
+
+    if (kwhr_centi > 0)
+    {
+      mpkwh_deci = miles_centi / (kwhr_centi / 10);
+      if (mpkwh_deci > 99)
+      {
+        mpkwh_deci = 0;
+      }
+      mpkwh = mpkwh_deci / 10;
+      mpkwh_frac = mpkwh_deci % 10;
+    }
   }
 
   TEST_POINT_HIGH;
@@ -221,7 +236,7 @@ void loop()
 
     sprintf(&buffer[32], " %2d.%02d mi %2d mph ", miles, miles_frac, mph);
     // sprintf(&buffer[32], " %3d mi %2d mph ", miles_centi, mph);
-    sprintf(&buffer[48], " %2d.%01d  soc  %4d", soc, soc_frac, gids);
+    sprintf(&buffer[48], "%2d.%01d soc %1d.%01d m/kwh", soc, soc_frac, mpkwh, mpkwh_frac);
     buffer[0] = kwhr_sign_trip;
     buffer[10] = kwhr_sign;
     buffer[16] = kwh_sign_trip;
