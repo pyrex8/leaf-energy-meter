@@ -207,8 +207,8 @@ void loop()
     distance += speed; 
     mph = speed / SPEED_PER_MPH;
     miles_centi = distance / DISTANCE_PER_MILE;
-    miles = miles_centi / 100;
-    miles_frac = miles_centi % 100;
+    miles = miles_centi / 10;
+    miles_frac = miles_centi % 10;
   }
 
   TEST_POINT_HIGH;
@@ -219,8 +219,8 @@ void loop()
     sprintf(&buffer[16], " %2d.%02d kWh", kwh_trip, kwh_frac_trip);
     sprintf(&buffer[26], " %2d.%02d", kwh, kwh_frac);
 
-    //sprintf(&buffer[32], " %2d.%02d mi %2d mph ", miles, miles_frac, mph);
-    sprintf(&buffer[32], " %3d mi %2d mph ", miles_centi, mph);
+    sprintf(&buffer[32], " %2d.%01d mi %2d mph ", miles, miles_frac, mph);
+    // sprintf(&buffer[32], " %3d mi %2d mph ", miles_centi, mph);
     sprintf(&buffer[48], " %2d.%01d  soc  %4d", soc, soc_frac, gids);
     buffer[0] = kwhr_sign_trip;
     buffer[10] = kwhr_sign;
