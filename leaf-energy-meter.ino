@@ -8,7 +8,7 @@
 MCP_CAN CAN0(10);
 #define COUNTS_PER_CENTI_KWH 14400000  // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
 #define SPEED_PER_MPH 316 // from driving test data
-#define DISTANCE_PER_MILE 5688000 //(SPEED_PER_MPH * 6 * 6 * 50) // 316 * 60 * 60 * 50 for 20ms sample (removed two zero for CENTI) 568800
+#define DISTANCE_PER_MILE 568800 //(SPEED_PER_MPH * 6 * 6 * 50) // 316 * 60 * 60 * 50 for 20ms sample (removed two zero for CENTI) 568800
 
 #define LINE_SPACING 16
 #define X0 0
@@ -207,8 +207,8 @@ void loop()
     distance += speed; 
     mph = speed / SPEED_PER_MPH;
     miles_centi = distance / DISTANCE_PER_MILE;
-    miles = miles_centi / 10;
-    miles_frac = miles_centi % 10;
+    miles = miles_centi / 100;
+    miles_frac = miles_centi % 100;
   }
 
   TEST_POINT_HIGH;
@@ -219,7 +219,7 @@ void loop()
     sprintf(&buffer[16], " %2d.%02d kWh", kwh_trip, kwh_frac_trip);
     sprintf(&buffer[26], " %2d.%02d", kwh, kwh_frac);
 
-    sprintf(&buffer[32], " %2d.%01d mi %2d mph ", miles, miles_frac, mph);
+    sprintf(&buffer[32], " %2d.%02d mi %2d mph ", miles, miles_frac, mph);
     // sprintf(&buffer[32], " %3d mi %2d mph ", miles_centi, mph);
     sprintf(&buffer[48], " %2d.%01d  soc  %4d", soc, soc_frac, gids);
     buffer[0] = kwhr_sign_trip;
