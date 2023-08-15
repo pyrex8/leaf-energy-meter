@@ -119,9 +119,9 @@ void loop()
       miles = miles_centi / 100;
       miles_frac = miles_centi % 100;
 
-      if (kwh_centi > 0)
+      if (kwh_centi_trip > 0)
       {
-        mpkwh_deci = (uint16_t)((uint32_t)(miles_centi * 100) / kwh_centi);
+        mpkwh_deci = (uint16_t)((uint32_t)(miles_centi * 100) / kwh_centi_trip);
         mpkwh = mpkwh_deci / 100;
         mpkwh_frac = mpkwh_deci % 100;
       }
