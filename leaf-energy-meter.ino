@@ -6,7 +6,6 @@
 
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
-#define COUNTS_PER_CENTI_KWH 14400000  // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
 #define SPEED_PER_MPH 316 // from driving test data
 #define DISTANCE_PER_MILE 568800 //(SPEED_PER_MPH * 6 * 6 * 50) // 316 * 60 * 60 * 50 for 20ms sample (removed two zero for CENTI) 568800
 
@@ -25,9 +24,6 @@ MCP_CAN CAN0(10);
 long unsigned int rx_id;
 unsigned char len = 0;
 unsigned char rx_buf[8];
-
-int16_t volt = 0;
-int16_t amp = 0;
 
 uint16_t gids = 0;
 
@@ -87,7 +83,6 @@ void loop()
     {
       speed = (rx_buf[0] << 8) | (rx_buf[1]);
       distance += speed; 
-      mph = speed / SPEED_PER_MPH;
       miles_centi = distance / DISTANCE_PER_MILE;
       miles = miles_centi / 100;
       miles_frac = miles_centi % 100;
