@@ -71,7 +71,7 @@ void setup()
   CAN0.init_Mask(0, 0, 0x07ff0000);
   CAN0.init_Filt(0, 0, 0x02840000);
   CAN0.init_Mask(1, 0, 0x07ff0000);
-  CAN0.init_Filt(2, 0, 0x05bc0000);
+  CAN0.init_Filt(2, 0, 0x05b30000);
 
   CAN0.setMode(MCP_NORMAL);
   pinMode(CAN0_INT, INPUT);
@@ -100,25 +100,22 @@ void loop()
       }
     }
 
-    if (rx_id == 0x5bc) // 500ms
+     if (rx_id == 0x5b3)
     {
-      gids = (rx_buf[0] << 2) | (rx_buf[1] >> 6);
+      gids = rx_buf[5];
       kwh_centi = (int16_t)(((int32_t)gids * KWH_FACTOR) / 100);
-
-      kwh = kwh_centi / 100;
-      kwh_frac = kwh_centi % 100;
 
       if (kwh_centi_start == 0)
       {
         kwh_centi_start = kwh_centi;
       }
+      kwh_centi_trip = kwh_centi_start - kwh_centi;
 
-      if (kwh_centi_start > kwh_centi)
-      {
-        kwh_centi_trip = kwh_centi_start - kwh_centi;
-        kwh_trip = kwh_centi_trip / 100;
-        kwh_frac_trip = kwh_centi_trip % 100;
-      }
+      kwh = kwh_centi / 100;
+      kwh_frac = kwh_centi % 100;
+
+      kwh_trip = kwh_centi_trip / 100;
+      kwh_frac_trip = kwh_centi_trip % 100;
 
       time_500ms++;
       time_minutes = time_500ms / 120;
