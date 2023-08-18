@@ -1,4 +1,4 @@
-// Nissan Leaf CAR-CAN
+// Nissan Leaf EV-CAN
 
 #include <ssd1306.h>
 #include <mcp_can.h>
@@ -6,6 +6,7 @@
 
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
+#define COUNTS_PER_CENTI_KWH 14400000  // 2 * 2 * 60 * 60 * 1000 for 10ms sample rate
 #define SPEED_PER_MPH 316 // from driving test data
 #define DISTANCE_PER_MILE 568800 //(SPEED_PER_MPH * 6 * 6 * 50) // 316 * 60 * 60 * 50 for 20ms sample (removed two zero for CENTI) 568800
 
@@ -25,12 +26,19 @@ long unsigned int rx_id;
 unsigned char len = 0;
 unsigned char rx_buf[8];
 
+int16_t volt = 0;
+int16_t amp = 0;
+
 uint16_t gids = 0;
+uint16_t soc_deci = 0;
+uint16_t soc = 0;
+uint16_t soc_frac = 0;
 
 uint16_t kwh_centi = 0;
 uint16_t kwh = 0;
 uint16_t kwh_frac = 0;
 
+int32_t kwh_count_trip = 0;
 uint16_t kwh_centi_trip = 0;
 uint16_t kwh_trip = 0;
 uint16_t kwh_frac_trip = 0;
@@ -65,10 +73,12 @@ void setup()
   ssd1306_clearScreen();
   CAN0.begin(MCP_STDEXT, CAN_500KBPS, MCP_8MHZ);
   CAN0.init_Mask(0, 0, 0x07ff0000);
-  CAN0.init_Filt(0, 0, 0x02840000);
+  CAN0.init_Filt(0, 0, 0x01db0000);
+  CAN0.init_Filt(1, 0, 0x055b0000);
   CAN0.init_Mask(1, 0, 0x07ff0000);
-  CAN0.init_Filt(2, 0, 0x05b30000);
-
+  CAN0.init_Filt(2, 0, 0x02840000);
+  CAN0.init_Filt(3, 0, 0x05bc0000);
+  
   CAN0.setMode(MCP_NORMAL);
   pinMode(CAN0_INT, INPUT);
 }
@@ -79,10 +89,34 @@ void loop()
   {
     CAN0.readMsgBuf(&rx_id, &len, rx_buf);
 
+    if (rx_id == 0x1db) // 10ms
+    {
+      amp = (rx_buf[0] << 3) | (rx_buf[1] >> 5);  // 0.5A/count 11 bits
+      if (amp & 0x0400)
+      {
+        amp |= 0xf800;
+      }
+      amp = -amp;
+
+      volt = (rx_buf[2] << 2) | (rx_buf[3] >> 6);  // 0.5V/count 10 bits
+
+      kwh_count_trip += (int32_t)volt * (int32_t)amp;
+
+      kwh_centi_trip = (int16_t)(kwh_count_trip / COUNTS_PER_CENTI_KWH);
+      if (kwh_count_trip < 0)
+      {
+        kwh_centi_trip = 0;
+      }
+
+      kwh_trip = kwh_centi_trip / 100;
+      kwh_frac_trip = kwh_centi_trip % 100;
+    }
+
     if (rx_id == 0x284) // 20ms
     {
       speed = (rx_buf[0] << 8) | (rx_buf[1]);
       distance += speed; 
+      mph = speed / SPEED_PER_MPH;
       miles_centi = distance / DISTANCE_PER_MILE;
       miles = miles_centi / 100;
       miles_frac = miles_centi % 100;
@@ -95,22 +129,20 @@ void loop()
       }
     }
 
-     if (rx_id == 0x5b3)
+    if (rx_id == 0x55b) // 100ms
     {
-      gids = rx_buf[5];
-      kwh_centi = (int16_t)(((int32_t)gids * KWH_FACTOR) / 100);
+      soc_deci = (rx_buf[0] << 2) | (rx_buf[1] >> 6);
+      soc = soc_deci / 10;
+      soc_frac = soc % 10;
+    }
 
-      if (kwh_centi_start == 0)
-      {
-        kwh_centi_start = kwh_centi;
-      }
-      kwh_centi_trip = kwh_centi_start - kwh_centi;
+    if (rx_id == 0x5bc) // 500ms
+    {
+      gids = (rx_buf[0] << 2) | (rx_buf[1] >> 6);
+      kwh_centi = (int16_t)(((int32_t)gids * KWH_FACTOR) / 100);
 
       kwh = kwh_centi / 100;
       kwh_frac = kwh_centi % 100;
-
-      kwh_trip = kwh_centi_trip / 100;
-      kwh_frac_trip = kwh_centi_trip % 100;
 
       time_500ms++;
       time_minutes = time_500ms / 120;
@@ -120,7 +152,7 @@ void loop()
   TEST_POINT_HIGH;
   if ((i == 0) && (j == 0))
   {
-    sprintf(&buffer[0],  "%2d.%02d kWh        ", kwh, kwh_frac);
+    sprintf(&buffer[0],  "%2d.%02d kWh %2d soc ", kwh, kwh_frac, soc);
     sprintf(&buffer[16], "%2d.%02d kWh %2d min ", kwh_trip, kwh_frac_trip, time_minutes);
     sprintf(&buffer[32], "%2d.%02d miles      ", miles, miles_frac);
     sprintf(&buffer[48], "%2d.%02d miles/kwh  ", mpkwh, mpkwh_frac);
