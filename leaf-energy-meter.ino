@@ -1,4 +1,4 @@
-// Nissan Leaf EV-CAN
+// Nissan Leaf EV-CAN Energy Meter
 
 #include <ssd1306.h>
 #include <mcp_can.h>
@@ -7,10 +7,7 @@
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
 
-#define LINE_SPACING 32
-#define X0 0
-#define Y0 0
-#define Y1 (Y0 + LINE_SPACING)
+#define SECOND_ROW 32
 
 #define KWH_FACTOR 775
 
@@ -18,17 +15,22 @@ long unsigned int rx_id;
 unsigned char len = 0;
 unsigned char rx_buf[8];
 
-uint16_t gids = 0;
 uint16_t soc = 0;
-
+uint16_t gids = 0;
 uint16_t kwh_deci = 0;
 uint16_t kwh = 0;
 uint16_t kwh_frac = 0;
 
-char buffer[20];
-char buff_char[2] = "0";
-uint8_t i = 0;
-uint8_t j = 0;
+char buff_kwh[9];
+char buff_soc[9];
+
+void display_update()
+{
+  sprintf(buff_kwh, "%2d.%01d kWh", kwh, kwh_frac);
+  sprintf(buff_soc, "  %2d %%  ", soc);
+  ssd1306_printFixed2x(0, 0, buff_kwh, STYLE_BOLD);
+  ssd1306_printFixed2x(0, SECOND_ROW, buff_soc, STYLE_BOLD);
+}
 
 void setup()
 {
@@ -40,9 +42,9 @@ void setup()
   CAN0.init_Filt(0, 0, 0x055b0000);
   CAN0.init_Mask(1, 0, 0x07ff0000);
   CAN0.init_Filt(2, 0, 0x05bc0000);
-  
   CAN0.setMode(MCP_NORMAL);
   pinMode(CAN0_INT, INPUT);
+  display_update();
 }
 
 void loop()
@@ -63,25 +65,8 @@ void loop()
 
       kwh = kwh_deci / 10;
       kwh_frac = kwh_deci % 10;
+
+      display_update();
     }
   }
-
-  if ((i == 0) && (j == 0))
-  {
-    sprintf(&buffer[0], "%2d.%01d kWh", kwh, kwh_frac);
-    sprintf(&buffer[8], "  %2d %% ", soc);
-  }
-
-  i++;
-  if (i > 7)
-  {
-    i = 0;
-    j++;
-    if (j > 1)
-    {
-      j = 0;
-    }
-  }
-  buff_char[0] = buffer[i + j * 8];
-  ssd1306_printFixed2x(i * 16, j * Y1, buff_char, STYLE_BOLD);
 }
