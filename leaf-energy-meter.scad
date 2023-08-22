@@ -5,7 +5,7 @@ difference(){
       
     
 translate([0,0,3])
-    cube([30,32,5.5],true);
+    cube([30,48,5.5],true);
 
 // pcb
 translate([0,0,3.5])
@@ -18,12 +18,15 @@ translate([0,1.25,2])
 // cable
 translate([0,-14,6])
     cube([10,10,5],true);
-}
-
+    
 // support bottom
-translate([14,-17,3])
-    cube([2,6,5.5],true);
+translate([0,-22.5,3])
+rotate([0,0,-7])
+    cube([36,10,6],true);
 
 // support top
-translate([-14,19,3])
-    cube([2,9,5.5],true);
+translate([0,24,3])
+rotate([0,0,-12])
+    cube([36,10,6],true);    
+}
+
