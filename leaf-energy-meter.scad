@@ -19,12 +19,22 @@ translate([0,-14,6])
     cube([10,15,5],true);
     
 // support bottom
-translate([0,-24.5,3])
+translate([0,-24.5,2.3])
+rotate([0,0,-7])
+    cube([36,10,6],true);
+
+// lip bottom
+translate([0,-25.5,3])
 rotate([0,0,-7])
     cube([36,10,6],true);
 
 // support top
-translate([0,23.6,3])
+translate([0,23.6,2.3])
+rotate([0,0,-13])
+    cube([36,10,6],true);
+    
+// lip top 
+translate([0,24.6,3])
 rotate([0,0,-13])
     cube([36,10,6],true);    
 }
