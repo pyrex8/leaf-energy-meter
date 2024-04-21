@@ -7,7 +7,7 @@
 #define CAN0_INT 2
 MCP_CAN CAN0(10);
 
-#define SECOND_ROW 32
+#define SECOND_ROW 48
 
 #define KWH_FACTOR 775
 
@@ -20,16 +20,19 @@ uint16_t gids = 0;
 uint16_t kwh_deci = 0;
 uint16_t kwh = 0;
 uint16_t kwh_frac = 0;
+uint16_t kwh_total_deci = 0;
+uint16_t kwh_total = 0;
+uint16_t kwh_total_frac = 0;
 
 char buff_kwh[9];
-char buff_soc[9];
+char buff_kwh_total[18];
 
 void display_update()
 {
   sprintf(buff_kwh, "%2d.%01d kWh", kwh, kwh_frac);
-  sprintf(buff_soc, "  %2d %%  ", soc);
+  sprintf(buff_kwh_total, "  %2d %%  %2d.%01d kWh", soc, kwh_total, kwh_total_frac);
   ssd1306_printFixed2x(0, 0, buff_kwh, STYLE_BOLD);
-  ssd1306_printFixed2x(0, SECOND_ROW, buff_soc, STYLE_BOLD);
+  ssd1306_printFixed(0, SECOND_ROW, buff_kwh_total, STYLE_BOLD);
 }
 
 void setup()
@@ -65,6 +68,14 @@ void loop()
 
       kwh = kwh_deci / 10;
       kwh_frac = kwh_deci % 10;
+
+      if (soc > 0)
+      {
+        kwh_total_deci = (kwh_deci * 100) / soc;
+
+        kwh_total = kwh_total_deci / 10;
+        kwh_total_frac = kwh_total_deci % 10;
+      }
 
       display_update();
     }
