@@ -22,6 +22,13 @@
 
 
 
+Code is using arduino
+https://www.arduino.cc
+
+<p float="center">
+  <img src="images/arduino_editor.png" alt="enclosure" width="800"/>
+
+
 
 The schematics and pcb layout were made using diptrace
 https://diptrace.com
