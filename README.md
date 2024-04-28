@@ -44,4 +44,9 @@ https://oshpark.com/projects/Czkf2fi5/view_design
   <img src="images/obd2_male_backshell_wiring.png" alt="enclosure" width="200"/>
 
 
+bezel is design using OpenSCAD
+https://openscad.org/
+
+<p float="center">
+  <img src="images/bezel_openscad.png" alt="enclosure" width="800"/>
 
