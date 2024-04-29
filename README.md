@@ -10,6 +10,13 @@ Display explaination
 <p align="center">
   <img src="images/energy_display.jpg" alt="energy_display" width="400"/>
 
+Total energy is calculated from remaining energy and state of cahrge CAN bus data:
+
+```total energy capacity = remaining energy / state of charge```
+
+Note: total energy capacity does fluctuate a small amount while driving.
+
+
 Display fully enclosed in 2011-2012 Nissan Leaf Upper Speedometer Combination Meter Display 24810-3NA1A
 <p align="center">
   <img src="images/display_mounted.jpg" alt="display_mounted" width="400"/>
