@@ -1,37 +1,49 @@
 # leaf-energy-meter
 
+The Nissan Leaf Energy Meter displays kWh remaining battery energy using data from the Nissan Leafs EV CAN bus.
 
-<p float="center">
+Display installed in dash
+<p align="center">
   <img src="images/installed_in_dash.jpg" alt="finished" width="400"/>
 
+Display explaination
+<p align="center">
+  <img src="images/energy_display.jpg" alt="energy_display" width="400"/>
 
+Display fully enclosed in 2011-2012 Nissan Leaf Upper Speedometer Combination Meter Display 24810-3NA1A
+<p align="center">
+  <img src="images/display_mounted.jpg" alt="display_mounted" width="400"/>
 
-<p float="center">
-  <img src="images/display_bezel_black_tape.jpg" alt="mounting" width="400"/>
-
-
-<p float="center">
+Wires fed through back 
+<p align="center">
   <img src="images/display_connector.jpg" alt="connector" width="400"/>
 
+Black painters tape is used to cover the "christmas" tree efficiency indicator
+<p align="center">
+  <img src="images/display_bezel_black_tape.jpg" alt="mounting" width="400"/>
 
+Display and bezel mounted with Kapton tape
+<p align="center">
+  <img src="images/display_mounting.jpg" alt="findisplay_mountingished" width="400"/>
 
-<p float="center">
-  <img src="images/meter_in_case.jpg" alt="meter" width="400"/>
+Soldering wires to OLED display 
+<p align="center">
+  <img src="images/display_soldering.jpg" alt="findisplay_mountingished" width="400"/>
 
-
+Meter PCB in case
+<p align="center">
+  <img src="images/meter_pcb_in_case.jpg" alt="meter_pcb_in_case" width="400"/>
 
 Code is using arduino
 https://www.arduino.cc
 
-<p float="center">
+<p align="center">
   <img src="images/arduino_editor.png" alt="arduino" width="800"/>
 
-
-
-The schematics and pcb layout were made using diptrace
+The schematics and pcb layout were made using diptrace. Files in ```pcb``` folder
 https://diptrace.com
 
-<p float="center">
+<p align="center">
   <img src="images/schematics.png" alt="schematics" width="800"/>
 
 ### Parts list
@@ -45,12 +57,10 @@ https://diptrace.com
 | $0.5 | JST XH 2.54 4 Pin Connector Plug Male with 200mm Wire & Female Connector | <img src="images/jst.png" alt="jst" width="100"/> |
 | $8 | OBDII Male Connector with enclosure | <img src="images/enclosure.png" alt="enclosure" width="100"/> |
 
-
 The pcb is shared on OSH Park
 https://oshpark.com/projects/Czkf2fi5/view_design
 
-
-<p float="center">
+<p align="center">
   <img src="images/pcb_top.png" alt="pcb" width="400"/>
 
 
@@ -60,13 +70,13 @@ https://oshpark.com/projects/Czkf2fi5/view_design
 - pin 12, EV-CAN low
 - pin 13, EV-CAN high
 
-<p float="center">
+<p align="center">
   <img src="images/obd2_male_backshell_wiring.png" alt="enclosure" width="200"/>
 
 
-bezel is design using OpenSCAD
+bezel is design using OpenSCAD. Files in ```bezel``` folder
 https://openscad.org/
 
-<p float="center">
+<p align="center">
   <img src="images/bezel_openscad.png" alt="bezel" width="800"/>
 
